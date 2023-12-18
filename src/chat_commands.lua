@@ -1,4 +1,4 @@
--- Handle 'get' subcommand
+-- Function to handle 'get' subcommand
 function handle_get_prefix(player_name)
     local prefix = storage:get_string(player_name .. "_prefix") or ""
     local color = storage:get_string(player_name .. "_color") or "#FFFFFF"
@@ -10,7 +10,7 @@ function handle_get_prefix(player_name)
     end
 end
 
--- Handle 'set' and 'set_player' subcommands
+-- Function to handle 'set' and 'set_player' subcommands
 function handle_set_prefix(name, args)
     if not minetest.check_player_privs(name, {custom_chat_prefix = true}) then
         return false, "You don't have the privilege to set a prefix."
@@ -37,17 +37,13 @@ function handle_set_prefix(name, args)
         target_name = name
     end
 
-    if is_restricted_prefix(prefix) and not minetest.check_player_privs(name, { custom_chat_prefix_admin = true }) then
-        return false, "You cannot use a restricted prefix."
-    end
-
     storage:set_string(target_name .. "_prefix", prefix)
     storage:set_string(target_name .. "_color", color)
 
     return true, "Prefix set successfully for " .. target_name
 end
 
--- Handle 'clear' subcommand
+-- Function to handle 'clear' subcommand
 function handle_clear_prefix(name, args)
     if not minetest.check_player_privs(name, {custom_chat_prefix = true}) then
         return false, "You don't have the privilege to clear a prefix."
@@ -82,6 +78,63 @@ minetest.register_chatcommand("prefix", {
         else
             return false, "Invalid subcommand. Use 'get', 'set', 'set_player', or 'clear'."
         end
+    end
+})
+
+-- Function to get formatted prefix for a player
+local function get_formatted_prefix(player_name)
+    local prefix = storage:get_string(player_name .. "_prefix") or ""
+    local color = storage:get_string(player_name .. "_color") or "#FFFFFF"
+
+    if prefix ~= "" and (not is_restricted_prefix(prefix) or minetest.check_player_privs(player_name, { custom_chat_prefix_admin = true })) then
+        return "[" .. minetest.colorize(color, prefix) .. "] "
+    else
+        return ""
+    end
+end
+
+-- Check if mcl_commands mod is present
+if minetest.get_modpath("mcl_commands") then
+    -- Override the default /tell command
+    minetest.override_chatcommand("tell", {
+        func = function(name, param)
+            local target, message = string.match(param, "^(%S+)%s(.+)$")
+            if not target or not message then
+                return false, "Invalid usage, see /help tell."
+            end
+
+            local target_player = minetest.get_player_by_name(target)
+            if not target_player then
+                return false, "Player " .. target .. " is not online."
+            end
+
+            local sender_prefix = get_formatted_prefix(name)
+            local full_message = "DM from " .. sender_prefix .. name .. ": " .. message
+
+            minetest.chat_send_player(target, full_message)
+            return true, "Message sent."
+        end
+    })
+end
+
+-- Override the default /msg command
+minetest.override_chatcommand("msg", {
+    func = function(name, param)
+        local target, message = string.match(param, "^(%S+)%s(.+)$")
+        if not target or not message then
+            return false, "Invalid usage, see /help msg."
+        end
+
+        local target_player = minetest.get_player_by_name(target)
+        if not target_player then
+            return false, "Player " .. target .. " is not online."
+        end
+
+        local sender_prefix = get_formatted_prefix(name)
+        local full_message = "DM from " .. sender_prefix .. name .. ": " .. message
+
+        minetest.chat_send_player(target, full_message)
+        return true, "Message sent."
     end
 })
 
