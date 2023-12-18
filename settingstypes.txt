@@ -1,0 +1,1 @@
+restricted_prefixes (Restricted Prefixes) string Mod,Moderator,Admin,Owner

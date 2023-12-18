@@ -8,7 +8,9 @@ minetest.register_privilege("custom_chat_prefix_admin", {
     give_to_singleplayer = false
 })
 
-local restricted_prefixes = { "Mod", "Moderator", "Admin", "Owner" }
+-- Load restricted prefixes from setting
+local restricted_prefixes = minetest.settings:get("restricted_prefixes") or "Mod,Moderator,Admin,Owner"
+restricted_prefixes = restricted_prefixes:split(",")
 
 function is_restricted_prefix(prefix)
     local lower_prefix = string.lower(prefix)

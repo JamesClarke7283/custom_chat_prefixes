@@ -1,13 +1,19 @@
 -- Function to handle 'get' subcommand
-function handle_get_prefix(player_name)
-    local prefix = storage:get_string(player_name .. "_prefix") or ""
-    local color = storage:get_string(player_name .. "_color") or "#FFFFFF"
+function handle_get_prefix(name, args)
+    local target_name = args[2] or name
+    local prefix = storage:get_string(target_name .. "_prefix") or ""
+    local color = storage:get_string(target_name .. "_color") or "#FFFFFF"
 
     if prefix ~= "" then
-        return true, "Your prefix is " .. minetest.colorize(color, prefix)
+        return true, "Prefix for " .. target_name .. " is " .. minetest.colorize(color, prefix)
     else
-        return true, "You don't have a custom prefix."
+        return true, "No custom prefix for " .. target_name
     end
+end
+
+-- Additional utility function for checking color code validity
+local function is_valid_color(color)
+    return color:match("^#%x%x%x%x%x%x$")
 end
 
 -- Function to handle 'set' and 'set_player' subcommands
@@ -22,19 +28,23 @@ function handle_set_prefix(name, args)
         if not minetest.check_player_privs(name, {custom_chat_prefix_admin = true}) then
             return false, "You don't have the privilege to set a prefix for others."
         end
-        if #args < 4 then
+        if #args < 4 or #args > 4 then
             return false, "Usage: /prefix set_player <player_name> <prefix> [color]"
         end
         target_name = args[2]
         prefix = args[3]
         color = args[4] or "#FFFFFF"
     else
-        if #args < 2 then
+        if #args < 2 or #args > 3 then
             return false, "Usage: /prefix set <prefix> [color]"
         end
         prefix = args[2]
         color = args[3] or "#FFFFFF"
         target_name = name
+    end
+
+    if color and not is_valid_color(color) then
+        return false, "Invalid color code. Use hex format: #RRGGBB"
     end
 
     storage:set_string(target_name .. "_prefix", prefix)
@@ -63,14 +73,14 @@ end
 
 -- Registering the chat command
 minetest.register_chatcommand("prefix", {
-    params = "get | set <prefix> [color] | set_player <player_name> <prefix> [color] | clear | clear <player_name>",
+    params = "get [<player_name>] | set <prefix> [color] | set_player <player_name> <prefix> [color] | clear | clear <player_name>",
     description = "Get, set, or clear chat prefixes",
     func = function(name, param)
         local args = param:split(" ")
         local subcommand = args[1]
 
         if subcommand == "get" then
-            return handle_get_prefix(name)
+            return handle_get_prefix(name, args)
         elseif subcommand == "set" or subcommand == "set_player" then
             return handle_set_prefix(name, args)
         elseif subcommand == "clear" then
